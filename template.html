@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brasil em Dados</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1a2230;--mut:#667085;--line:#e4e7ec;
+ --c1:#2563eb;--c2:#d97706;--c3:#0d9488;--grid:#eceff3}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141b;--card:#171e28;--ink:#e8ecf2;--mut:#93a0b4;--line:#263041;
+ --c1:#60a5fa;--c2:#fbbf24;--c3:#2dd4bf;--grid:#222b39}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:32px 16px 48px}
+h1{margin:0 0 6px;font-size:28px}
+.intro{color:var(--mut);margin:0 0 24px;max-width:62ch}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:12px}
+.kpis .card{margin:0}
+.kpi .l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi .v{font-size:28px;font-weight:650;margin:2px 0}
+.kpi .d{font-size:13px;color:var(--mut)}
+.up{color:#dc2626}.down{color:#16a34a}
+h2{margin:0 0 4px;font-size:18px}
+.card p{margin:0 0 12px;color:var(--mut);font-size:14px}
+.card p b{color:var(--ink)}
+.box{position:relative;height:280px}
+.box.tall{height:560px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.seg button{font:inherit;font-size:13px;cursor:pointer;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.seg button.on{background:var(--c1);color:#fff;border-color:var(--c1)}
+footer{margin-top:20px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <h1>Brasil em dados 🇧🇷</h1>
+ <p class="intro">Fui olhar o que as APIs abertas do Banco Central e do IBGE contam sobre a economia e sobre os estados. Separei só o que achei mais interessante.</p>
+
+ <section class="kpis" id="kpis"></section>
+
+ <div class="card">
+  <h2>Como anda o dólar?</h2>
+  <p id="tDolar"></p>
+  <div class="seg" id="periodo"></div>
+  <div class="box"><canvas id="cDolar"></canvas></div>
+ </div>
+
+ <div class="card">
+  <h2>Juros altos, inflação mais calma</h2>
+  <p id="tJuros"></p>
+  <div class="box"><canvas id="cJuros"></canvas></div>
+ </div>
+
+ <div class="card">
+  <h2>Quem produz mais por pessoa?</h2>
+  <p id="tPib"></p>
+  <div class="box tall"><canvas id="cPerCap"></canvas></div>
+ </div>
+
+ <footer>Feito por Rikelme Holanda · dados do Banco Central e do IBGE · atualizado em <span id="gen"></span></footer>
+</div>
+
+<script>
+const D = /*DADOS*/null;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (n,d=2)=>n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const mes = s => { const [y,m]=s.slice(0,7).split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][m-1]+'/'+y.slice(2); };
+const $ = id => document.getElementById(id);
+$('gen').textContent = D.gerado_em;
+
+let meses = 60;
+const charts = {};
+const cut = a => a.slice(-meses);
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart($(id),cfg); }
+function base(extra={}){
+  return Object.assign({responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   plugins:{legend:{labels:{color:css('--mut'),boxWidth:12}}},
+   scales:{x:{ticks:{color:css('--mut'),maxTicksLimit:7},grid:{display:false}},
+           y:{ticks:{color:css('--mut')},grid:{color:css('--grid')}}}},extra);
+}
+
+const ip = D.ipca.filter(x=>x.a12!=null);
+const ipM = Object.fromEntries(ip.map(x=>[x.d.slice(0,7),x.a12]));
+const dNow = D.dolar.at(-1).v, selNow = D.selic.at(-1).v, ipNow = ip.at(-1).a12;
+const real = selNow - ipNow;
+const ufs = D.ufs.map(u=>({...u,pc:u.pib/u.pop/1000})).sort((a,b)=>b.pc-a.pc);
+
+// ---- KPIs
+function kpis(){
+  const d12 = D.dolar.at(-13)?.v, v = (dNow/d12-1)*100;
+  const tot = D.ufs.reduce((a,u)=>a+u.pop,0), pib = D.ufs.reduce((a,u)=>a+u.pib,0);
+  const it = [
+   ['Dólar','R$ '+fmt(dNow,2),`<span class="${v>0?'up':'down'}">${v>0?'▲':'▼'} ${fmt(Math.abs(v),1)}%</span> em 12 meses`],
+   ['Selic',fmt(selNow)+'%','meta ao ano'],
+   ['Inflação (12m)',fmt(ipNow)+'%','IPCA acumulado'],
+   ['PIB do país','R$ '+fmt(pib/1e12,1)+' tri',fmt(tot/1e6,0)+' milhões de pessoas'],
+  ];
+  $('kpis').innerHTML = it.map(i=>`<div class="card kpi"><div class="l">${i[0]}</div><div class="v">${i[1]}</div><div class="d">${i[2]}</div></div>`).join('');
+}
+
+// ---- Textos pessoais (calculados dos dados)
+function textos(){
+  const dol = cut(D.dolar), min = dol.reduce((a,b)=>b.v<a.v?b:a), max = dol.reduce((a,b)=>b.v>a.v?b:a);
+  $('tDolar').innerHTML = `Hoje está em <b>R$ ${fmt(dNow)}</b>. No período que você escolher abaixo, a mínima foi <b>R$ ${fmt(min.v)}</b> (${mes(min.d)}) e a máxima <b>R$ ${fmt(max.v)}</b> (${mes(max.d)}).`;
+  $('tJuros').innerHTML = `Com a Selic em <b>${fmt(selNow)}%</b> e a inflação em <b>${fmt(ipNow)}%</b>, o juro real fica em torno de <b>${fmt(real,1)} pontos</b> acima da inflação. Na prática, quem tem dinheiro parado em renda fixa está ganhando bem, e quem toma crédito sente no bolso.`;
+  const t=ufs[0], b=ufs.at(-1);
+  $('tPib').innerHTML = `${t.nome} lidera com <b>R$ ${fmt(t.pc,0)} mil por habitante</b>. ${b.nome} fica na ponta oposta, com <b>R$ ${fmt(b.pc,0)} mil</b>. Uma diferença de <b>${fmt(t.pc/b.pc,1)}×</b> dentro do mesmo país.`;
+}
+
+// ---- Gráficos
+function series(){
+  const dol = cut(D.dolar);
+  mk('cDolar',{type:'line',data:{labels:dol.map(x=>mes(x.d)),datasets:[{label:'US$ em R$',data:dol.map(x=>x.v),
+    borderColor:css('--c1'),backgroundColor:css('--c1')+'22',fill:true,pointRadius:0,tension:.25,borderWidth:2}]},
+    options:base({plugins:{legend:{display:false}}})});
+  textos();
+}
+function juros(){
+  const sel = D.selic.slice(-60);
+  mk('cJuros',{type:'line',data:{labels:sel.map(x=>mes(x.d)),datasets:[
+   {label:'Selic',data:sel.map(x=>x.v),borderColor:css('--c2'),stepped:true,pointRadius:0,borderWidth:2},
+   {label:'Inflação 12m',data:sel.map(x=>ipM[x.d.slice(0,7)]??null),borderColor:css('--c3'),pointRadius:0,tension:.25,borderWidth:2}]},
+   options:base()});
+}
+function estados(){
+  mk('cPerCap',{type:'bar',data:{labels:ufs.map(u=>u.uf),datasets:[{data:ufs.map(u=>+u.pc.toFixed(1)),backgroundColor:css('--c1')}]},
+   options:base({indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{
+     title:c=>ufs[c[0].dataIndex].nome, label:c=>'R$ '+fmt(c.raw*1000,0)+' por habitante'}}},
+    scales:{x:{ticks:{color:css('--mut')},grid:{color:css('--grid')},title:{display:true,text:'R$ mil por habitante',color:css('--mut')}},
+            y:{ticks:{color:css('--mut'),autoSkip:false,font:{size:11}},grid:{display:false}}}})});
+}
+
+// ---- Filtro de período
+[[12,'12 meses'],[36,'3 anos'],[60,'5 anos'],[999,'Tudo']].forEach(([m,t])=>{
+  const b=document.createElement('button');b.textContent=t;if(m===meses)b.className='on';
+  b.onclick=()=>{meses=m;[...$('periodo').children].forEach(x=>x.className='');b.className='on';series();};
+  $('periodo').appendChild(b);
+});
+
+kpis();series();juros();estados();
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{series();juros();estados();});
+</script>
+</body>
+</html>

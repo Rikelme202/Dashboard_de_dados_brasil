@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brasil em Dados</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1a2230;--mut:#667085;--line:#e4e7ec;
+ --c1:#2563eb;--c2:#d97706;--c3:#0d9488;--grid:#eceff3}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141b;--card:#171e28;--ink:#e8ecf2;--mut:#93a0b4;--line:#263041;
+ --c1:#60a5fa;--c2:#fbbf24;--c3:#2dd4bf;--grid:#222b39}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:32px 16px 48px}
+h1{margin:0 0 6px;font-size:28px}
+.intro{color:var(--mut);margin:0 0 24px;max-width:62ch}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:12px}
+.kpis .card{margin:0}
+.kpi .l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi .v{font-size:28px;font-weight:650;margin:2px 0}
+.kpi .d{font-size:13px;color:var(--mut)}
+.up{color:#dc2626}.down{color:#16a34a}
+h2{margin:0 0 4px;font-size:18px}
+.card p{margin:0 0 12px;color:var(--mut);font-size:14px}
+.card p b{color:var(--ink)}
+.box{position:relative;height:280px}
+.box.tall{height:560px}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.seg button{font:inherit;font-size:13px;cursor:pointer;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 10px}
+.seg button.on{background:var(--c1);color:#fff;border-color:var(--c1)}
+footer{margin-top:20px;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <h1>Brasil em dados 🇧🇷</h1>
+ <p class="intro">Fui olhar o que as APIs abertas do Banco Central e do IBGE contam sobre a economia e sobre os estados. Separei só o que achei mais interessante.</p>
+
+ <section class="kpis" id="kpis"></section>
+
+ <div class="card">
+  <h2>Como anda o dólar?</h2>
+  <p id="tDolar"></p>
+  <div class="seg" id="periodo"></div>
+  <div class="box"><canvas id="cDolar"></canvas></div>
+ </div>
+
+ <div class="card">
+  <h2>Juros altos, inflação mais calma</h2>
+  <p id="tJuros"></p>
+  <div class="box"><canvas id="cJuros"></canvas></div>
+ </div>
+
+ <div class="card">
+  <h2>Quem produz mais por pessoa?</h2>
+  <p id="tPib"></p>
+  <div class="box tall"><canvas id="cPerCap"></canvas></div>
+ </div>
+
+ <footer>Feito por Rikelme Holanda · dados do Banco Central e do IBGE · atualizado em <span id="gen"></span></footer>
+</div>
+
+<script>
+const D = {"gerado_em": "2026-11-09 13:28", "dolar": [{"d": "2020-01", "v": 4.2695}, {"d": "2020-02", "v": 4.4987}, {"d": "2020-03", "v": 5.1987}, {"d": "2020-04", "v": 5.427}, {"d": "2020-05", "v": 5.4263}, {"d": "2020-06", "v": 5.476}, {"d": "2020-07", "v": 5.2033}, {"d": "2020-08", "v": 5.4713}, {"d": "2020-09", "v": 5.6407}, {"d": "2020-10", "v": 5.7718}, {"d": "2020-11", "v": 5.3317}, {"d": "2020-12", "v": 5.1967}, {"d": "2021-01", "v": 5.4759}, {"d": "2021-02", "v": 5.5302}, {"d": "2021-03", "v": 5.6973}, {"d": "2021-04", "v": 5.4036}, {"d": "2021-05", "v": 5.2322}, {"d": "2021-06", "v": 5.0022}, {"d": "2021-07", "v": 5.1216}, {"d": "2021-08", "v": 5.1433}, {"d": "2021-09", "v": 5.4394}, {"d": "2021-10", "v": 5.643}, {"d": "2021-11", "v": 5.6199}, {"d": "2021-12", "v": 5.5805}, {"d": "2022-01", "v": 5.3574}, {"d": "2022-02", "v": 5.1394}, {"d": "2022-03", "v": 4.7378}, {"d": "2022-04", "v": 4.9191}, {"d": "2022-05", "v": 4.7289}, {"d": "2022-06", "v": 5.238}, {"d": "2022-07", "v": 5.1884}, {"d": "2022-08", "v": 5.179}, {"d": "2022-09", "v": 5.4066}, {"d": "2022-10", "v": 5.257}, {"d": "2022-11", "v": 5.2941}, {"d": "2022-12", "v": 5.2177}, {"d": "2023-01", "v": 5.0993}, {"d": "2023-02", "v": 5.2078}, {"d": "2023-03", "v": 5.0804}, {"d": "2023-04", "v": 5.0007}, {"d": "2023-05", "v": 5.0959}, {"d": "2023-06", "v": 4.8192}, {"d": "2023-07", "v": 4.7415}, {"d": "2023-08", "v": 4.9219}, {"d": "2023-09", "v": 5.0076}, {"d": "2023-10", "v": 5.0575}, {"d": "2023-11", "v": 4.9355}, {"d": "2023-12", "v": 4.8413}, {"d": "2024-01", "v": 4.9535}, {"d": "2024-02", "v": 4.9833}, {"d": "2024-03", "v": 4.9962}, {"d": "2024-04", "v": 5.1718}, {"d": "2024-05", "v": 5.2416}, {"d": "2024-06", "v": 5.5589}, {"d": "2024-07", "v": 5.6621}, {"d": "2024-08", "v": 5.6562}, {"d": "2024-09", "v": 5.4481}, {"d": "2024-10", "v": 5.7779}, {"d": "2024-11", "v": 6.0535}, {"d": "2024-12", "v": 6.1923}, {"d": "2025-01", "v": 5.8301}, {"d": "2025-02", "v": 5.8488}, {"d": "2025-03", "v": 5.7422}, {"d": "2025-04", "v": 5.6608}, {"d": "2025-05", "v": 5.7087}, {"d": "2025-06", "v": 5.4571}, {"d": "2025-07", "v": 5.6021}, {"d": "2025-08", "v": 5.4264}, {"d": "2025-09", "v": 5.3186}, {"d": "2025-10", "v": 5.3843}, {"d": "2025-11", "v": 5.3338}, {"d": "2025-12", "v": 5.5024}, {"d": "2026-01", "v": 5.2301}, {"d": "2026-02", "v": 5.1495}, {"d": "2026-03", "v": 5.2194}, {"d": "2026-04", "v": 4.9886}, {"d": "2026-05", "v": 5.0569}, {"d": "2026-06", "v": 5.1766}, {"d": "2026-07", "v": 5.0773}, {"d": "2026-08", "v": 5.1816}, {"d": "2026-09", "v": 5.1809}, {"d": "2026-10", "v": 5.4212}, {"d": "2026-11", "v": 5.5146}], "selic": [{"d": "2020-01", "v": 4.5}, {"d": "2020-02", "v": 4.25}, {"d": "2020-03", "v": 3.75}, {"d": "2020-04", "v": 3.75}, {"d": "2020-05", "v": 3.0}, {"d": "2020-06", "v": 2.25}, {"d": "2020-07", "v": 2.25}, {"d": "2020-08", "v": 2.0}, {"d": "2020-09", "v": 2.0}, {"d": "2020-10", "v": 2.0}, {"d": "2020-11", "v": 2.0}, {"d": "2020-12", "v": 2.0}, {"d": "2021-01", "v": 2.0}, {"d": "2021-02", "v": 2.0}, {"d": "2021-03", "v": 2.75}, {"d": "2021-04", "v": 2.75}, {"d": "2021-05", "v": 3.5}, {"d": "2021-06", "v": 4.25}, {"d": "2021-07", "v": 4.25}, {"d": "2021-08", "v": 5.25}, {"d": "2021-09", "v": 6.25}, {"d": "2021-10", "v": 7.75}, {"d": "2021-11", "v": 7.75}, {"d": "2021-12", "v": 9.25}, {"d": "2022-01", "v": 9.25}, {"d": "2022-02", "v": 10.75}, {"d": "2022-03", "v": 11.75}, {"d": "2022-04", "v": 11.75}, {"d": "2022-05", "v": 12.75}, {"d": "2022-06", "v": 13.25}, {"d": "2022-07", "v": 13.25}, {"d": "2022-08", "v": 13.75}, {"d": "2022-09", "v": 13.75}, {"d": "2022-10", "v": 13.75}, {"d": "2022-11", "v": 13.75}, {"d": "2022-12", "v": 13.75}, {"d": "2023-01", "v": 13.75}, {"d": "2023-02", "v": 13.75}, {"d": "2023-03", "v": 13.75}, {"d": "2023-04", "v": 13.75}, {"d": "2023-05", "v": 13.75}, {"d": "2023-06", "v": 13.75}, {"d": "2023-07", "v": 13.75}, {"d": "2023-08", "v": 13.25}, {"d": "2023-09", "v": 12.75}, {"d": "2023-10", "v": 12.75}, {"d": "2023-11", "v": 12.25}, {"d": "2023-12", "v": 11.75}, {"d": "2024-01", "v": 11.75}, {"d": "2024-02", "v": 11.25}, {"d": "2024-03", "v": 10.75}, {"d": "2024-04", "v": 10.75}, {"d": "2024-05", "v": 10.5}, {"d": "2024-06", "v": 10.5}, {"d": "2024-07", "v": 10.5}, {"d": "2024-08", "v": 10.5}, {"d": "2024-09", "v": 10.75}, {"d": "2024-10", "v": 10.75}, {"d": "2024-11", "v": 11.25}, {"d": "2024-12", "v": 12.25}, {"d": "2025-01", "v": 13.25}, {"d": "2025-02", "v": 13.25}, {"d": "2025-03", "v": 14.25}, {"d": "2025-04", "v": 14.25}, {"d": "2025-05", "v": 14.75}, {"d": "2025-06", "v": 15.0}, {"d": "2025-07", "v": 15.0}, {"d": "2025-08", "v": 15.0}, {"d": "2025-09", "v": 15.0}, {"d": "2025-10", "v": 15.0}, {"d": "2025-11", "v": 15.0}, {"d": "2025-12", "v": 15.0}, {"d": "2026-01", "v": 15.0}, {"d": "2026-02", "v": 15.0}, {"d": "2026-03", "v": 14.75}, {"d": "2026-04", "v": 14.5}, {"d": "2026-05", "v": 14.5}, {"d": "2026-06", "v": 14.25}, {"d": "2026-07", "v": 14.25}, {"d": "2026-08", "v": 14.0}, {"d": "2026-09", "v": 13.75}, {"d": "2026-10", "v": 13.75}, {"d": "2026-11", "v": 13.75}], "ipca": [{"d": "2020-01-01", "v": 0.21}, {"d": "2020-02-01", "v": 0.25}, {"d": "2020-03-01", "v": 0.07}, {"d": "2020-04-01", "v": -0.31}, {"d": "2020-05-01", "v": -0.38}, {"d": "2020-06-01", "v": 0.26}, {"d": "2020-07-01", "v": 0.36}, {"d": "2020-08-01", "v": 0.24}, {"d": "2020-09-01", "v": 0.64}, {"d": "2020-10-01", "v": 0.86}, {"d": "2020-11-01", "v": 0.89}, {"d": "2020-12-01", "v": 1.35, "a12": 4.52}, {"d": "2021-01-01", "v": 0.25, "a12": 4.56}, {"d": "2021-02-01", "v": 0.86, "a12": 5.2}, {"d": "2021-03-01", "v": 0.93, "a12": 6.1}, {"d": "2021-04-01", "v": 0.31, "a12": 6.76}, {"d": "2021-05-01", "v": 0.83, "a12": 8.06}, {"d": "2021-06-01", "v": 0.53, "a12": 8.35}, {"d": "2021-07-01", "v": 0.96, "a12": 8.99}, {"d": "2021-08-01", "v": 0.87, "a12": 9.68}, {"d": "2021-09-01", "v": 1.16, "a12": 10.25}, {"d": "2021-10-01", "v": 1.25, "a12": 10.67}, {"d": "2021-11-01", "v": 0.95, "a12": 10.74}, {"d": "2021-12-01", "v": 0.73, "a12": 10.06}, {"d": "2022-01-01", "v": 0.54, "a12": 10.38}, {"d": "2022-02-01", "v": 1.01, "a12": 10.54}, {"d": "2022-03-01", "v": 1.62, "a12": 11.3}, {"d": "2022-04-01", "v": 1.06, "a12": 12.13}, {"d": "2022-05-01", "v": 0.47, "a12": 11.73}, {"d": "2022-06-01", "v": 0.67, "a12": 11.89}, {"d": "2022-07-01", "v": -0.68, "a12": 10.07}, {"d": "2022-08-01", "v": -0.36, "a12": 8.73}, {"d": "2022-09-01", "v": -0.29, "a12": 7.17}, {"d": "2022-10-01", "v": 0.59, "a12": 6.47}, {"d": "2022-11-01", "v": 0.41, "a12": 5.9}, {"d": "2022-12-01", "v": 0.62, "a12": 5.78}, {"d": "2023-01-01", "v": 0.53, "a12": 5.77}, {"d": "2023-02-01", "v": 0.84, "a12": 5.6}, {"d": "2023-03-01", "v": 0.71, "a12": 4.65}, {"d": "2023-04-01", "v": 0.61, "a12": 4.18}, {"d": "2023-05-01", "v": 0.23, "a12": 3.94}, {"d": "2023-06-01", "v": -0.08, "a12": 3.16}, {"d": "2023-07-01", "v": 0.12, "a12": 3.99}, {"d": "2023-08-01", "v": 0.23, "a12": 4.61}, {"d": "2023-09-01", "v": 0.26, "a12": 5.19}, {"d": "2023-10-01", "v": 0.24, "a12": 4.82}, {"d": "2023-11-01", "v": 0.28, "a12": 4.68}, {"d": "2023-12-01", "v": 0.56, "a12": 4.62}, {"d": "2024-01-01", "v": 0.42, "a12": 4.51}, {"d": "2024-02-01", "v": 0.83, "a12": 4.5}, {"d": "2024-03-01", "v": 0.16, "a12": 3.93}, {"d": "2024-04-01", "v": 0.38, "a12": 3.69}, {"d": "2024-05-01", "v": 0.46, "a12": 3.93}, {"d": "2024-06-01", "v": 0.21, "a12": 4.23}, {"d": "2024-07-01", "v": 0.38, "a12": 4.5}, {"d": "2024-08-01", "v": -0.02, "a12": 4.24}, {"d": "2024-09-01", "v": 0.44, "a12": 4.42}, {"d": "2024-10-01", "v": 0.56, "a12": 4.76}, {"d": "2024-11-01", "v": 0.39, "a12": 4.87}, {"d": "2024-12-01", "v": 0.52, "a12": 4.83}, {"d": "2025-01-01", "v": 0.16, "a12": 4.56}, {"d": "2025-02-01", "v": 1.31, "a12": 5.06}, {"d": "2025-03-01", "v": 0.56, "a12": 5.48}, {"d": "2025-04-01", "v": 0.43, "a12": 5.53}, {"d": "2025-05-01", "v": 0.26, "a12": 5.32}, {"d": "2025-06-01", "v": 0.24, "a12": 5.35}, {"d": "2025-07-01", "v": 0.26, "a12": 5.23}, {"d": "2025-08-01", "v": -0.11, "a12": 5.13}, {"d": "2025-09-01", "v": 0.48, "a12": 5.17}, {"d": "2025-10-01", "v": 0.09, "a12": 4.68}, {"d": "2025-11-01", "v": 0.18, "a12": 4.46}, {"d": "2025-12-01", "v": 0.33, "a12": 4.26}, {"d": "2026-01-01", "v": 0.33, "a12": 4.44}, {"d": "2026-02-01", "v": 0.7, "a12": 3.81}, {"d": "2026-03-01", "v": 0.88, "a12": 4.14}, {"d": "2026-04-01", "v": 0.67, "a12": 4.39}, {"d": "2026-05-01", "v": 0.58, "a12": 4.72}, {"d": "2026-06-01", "v": 0.16, "a12": 4.64}, {"d": "2026-07-01", "v": 0.07, "a12": 4.44}, {"d": "2026-08-01", "v": -0.32, "a12": 4.22}, {"d": "2026-09-01", "v": 0.82, "a12": 4.58}], "ufs": [{"id": "12", "uf": "AC", "nome": "Acre", "regiao": "Norte", "pop": 830018, "pib": 26291321000.0}, {"id": "27", "uf": "AL", "nome": "Alagoas", "regiao": "Nordeste", "pop": 3127683, "pib": 89688932000.0}, {"id": "16", "uf": "AP", "nome": "Amapá", "regiao": "Norte", "pop": 733759, "pib": 28020120000.0}, {"id": "13", "uf": "AM", "nome": "Amazonas", "regiao": "Norte", "pop": 3941613, "pib": 161794976000.0}, {"id": "29", "uf": "BA", "nome": "Bahia", "regiao": "Nordeste", "pop": 14141626, "pib": 430987853000.0}, {"id": "23", "uf": "CE", "nome": "Ceará", "regiao": "Nordeste", "pop": 8794957, "pib": 232239257000.0}, {"id": "53", "uf": "DF", "nome": "Distrito Federal", "regiao": "Centro-Oeste", "pop": 2817381, "pib": 365669108000.0}, {"id": "32", "uf": "ES", "nome": "Espírito Santo", "regiao": "Sudeste", "pop": 3833712, "pib": 209829732000.0}, {"id": "52", "uf": "GO", "nome": "Goiás", "regiao": "Centro-Oeste", "pop": 7056495, "pib": 336746975000.0}, {"id": "21", "uf": "MA", "nome": "Maranhão", "regiao": "Nordeste", "pop": 6776699, "pib": 149227195000.0}, {"id": "51", "uf": "MT", "nome": "Mato Grosso", "regiao": "Centro-Oeste", "pop": 3658649, "pib": 273008586000.0}, {"id": "50", "uf": "MS", "nome": "Mato Grosso do Sul", "regiao": "Centro-Oeste", "pop": 2757013, "pib": 184402118000.0}, {"id": "31", "uf": "MG", "nome": "Minas Gerais", "regiao": "Sudeste", "pop": 20539989, "pib": 971977551000.0}, {"id": "15", "uf": "PA", "nome": "Pará", "regiao": "Norte", "pop": 8120131, "pib": 254546511000.0}, {"id": "25", "uf": "PB", "nome": "Paraíba", "regiao": "Nordeste", "pop": 3974687, "pib": 96963174000.0}, {"id": "41", "uf": "PR", "nome": "Paraná", "regiao": "Sul", "pop": 11444380, "pib": 670919162000.0}, {"id": "26", "uf": "PE", "nome": "Pernambuco", "regiao": "Nordeste", "pop": 9058931, "pib": 270474919000.0}, {"id": "22", "uf": "PI", "nome": "Piauí", "regiao": "Nordeste", "pop": 3271199, "pib": 80916856000.0}, {"id": "33", "uf": "RJ", "nome": "Rio de Janeiro", "regiao": "Sudeste", "pop": 16055174, "pib": 1172871443000.0}, {"id": "24", "uf": "RN", "nome": "Rio Grande do Norte", "regiao": "Nordeste", "pop": 3302729, "pib": 101740275000.0}, {"id": "43", "uf": "RS", "nome": "Rio Grande do Sul", "regiao": "Sul", "pop": 10882965, "pib": 650107022000.0}, {"id": "11", "uf": "RO", "nome": "Rondônia", "regiao": "Norte", "pop": 1581196, "pib": 76456179000.0}, {"id": "14", "uf": "RR", "nome": "Roraima", "regiao": "Norte", "pop": 636707, "pib": 25124805000.0}, {"id": "42", "uf": "SC", "nome": "Santa Catarina", "regiao": "Sul", "pop": 7610361, "pib": 513392973000.0}, {"id": "35", "uf": "SP", "nome": "São Paulo", "regiao": "Sudeste", "pop": 44411238, "pib": 3444814033000.0}, {"id": "28", "uf": "SE", "nome": "Sergipe", "regiao": "Nordeste", "pop": 2210004, "pib": 60816662000.0}, {"id": "17", "uf": "TO", "nome": "Tocantins", "regiao": "Norte", "pop": 1511460, "pib": 64317699000.0}]};
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt = (n,d=2)=>n.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const mes = s => { const [y,m]=s.slice(0,7).split('-'); return ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'][m-1]+'/'+y.slice(2); };
+const $ = id => document.getElementById(id);
+$('gen').textContent = D.gerado_em;
+
+let meses = 60;
+const charts = {};
+const cut = a => a.slice(-meses);
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); charts[id]=new Chart($(id),cfg); }
+function base(extra={}){
+  return Object.assign({responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+   plugins:{legend:{labels:{color:css('--mut'),boxWidth:12}}},
+   scales:{x:{ticks:{color:css('--mut'),maxTicksLimit:7},grid:{display:false}},
+           y:{ticks:{color:css('--mut')},grid:{color:css('--grid')}}}},extra);
+}
+
+const ip = D.ipca.filter(x=>x.a12!=null);
+const ipM = Object.fromEntries(ip.map(x=>[x.d.slice(0,7),x.a12]));
+const dNow = D.dolar.at(-1).v, selNow = D.selic.at(-1).v, ipNow = ip.at(-1).a12;
+const real = selNow - ipNow;
+const ufs = D.ufs.map(u=>({...u,pc:u.pib/u.pop/1000})).sort((a,b)=>b.pc-a.pc);
+
+// ---- KPIs
+function kpis(){
+  const d12 = D.dolar.at(-13)?.v, v = (dNow/d12-1)*100;
+  const tot = D.ufs.reduce((a,u)=>a+u.pop,0), pib = D.ufs.reduce((a,u)=>a+u.pib,0);
+  const it = [
+   ['Dólar','R$ '+fmt(dNow,2),`<span class="${v>0?'up':'down'}">${v>0?'▲':'▼'} ${fmt(Math.abs(v),1)}%</span> em 12 meses`],
+   ['Selic',fmt(selNow)+'%','meta ao ano'],
+   ['Inflação (12m)',fmt(ipNow)+'%','IPCA acumulado'],
+   ['PIB do país','R$ '+fmt(pib/1e12,1)+' tri',fmt(tot/1e6,0)+' milhões de pessoas'],
+  ];
+  $('kpis').innerHTML = it.map(i=>`<div class="card kpi"><div class="l">${i[0]}</div><div class="v">${i[1]}</div><div class="d">${i[2]}</div></div>`).join('');
+}
+
+// ---- Textos pessoais (calculados dos dados)
+function textos(){
+  const dol = cut(D.dolar), min = dol.reduce((a,b)=>b.v<a.v?b:a), max = dol.reduce((a,b)=>b.v>a.v?b:a);
+  $('tDolar').innerHTML = `Hoje está em <b>R$ ${fmt(dNow)}</b>. No período que você escolher abaixo, a mínima foi <b>R$ ${fmt(min.v)}</b> (${mes(min.d)}) e a máxima <b>R$ ${fmt(max.v)}</b> (${mes(max.d)}).`;
+  $('tJuros').innerHTML = `Com a Selic em <b>${fmt(selNow)}%</b> e a inflação em <b>${fmt(ipNow)}%</b>, o juro real fica em torno de <b>${fmt(real,1)} pontos</b> acima da inflação. Na prática, quem tem dinheiro parado em renda fixa está ganhando bem, e quem toma crédito sente no bolso.`;
+  const t=ufs[0], b=ufs.at(-1);
+  $('tPib').innerHTML = `${t.nome} lidera com <b>R$ ${fmt(t.pc,0)} mil por habitante</b>. ${b.nome} fica na ponta oposta, com <b>R$ ${fmt(b.pc,0)} mil</b>. Uma diferença de <b>${fmt(t.pc/b.pc,1)}×</b> dentro do mesmo país.`;
+}
+
+// ---- Gráficos
+function series(){
+  const dol = cut(D.dolar);
+  mk('cDolar',{type:'line',data:{labels:dol.map(x=>mes(x.d)),datasets:[{label:'US$ em R$',data:dol.map(x=>x.v),
+    borderColor:css('--c1'),backgroundColor:css('--c1')+'22',fill:true,pointRadius:0,tension:.25,borderWidth:2}]},
+    options:base({plugins:{legend:{display:false}}})});
+  textos();
+}
+function juros(){
+  const sel = D.selic.slice(-60);
+  mk('cJuros',{type:'line',data:{labels:sel.map(x=>mes(x.d)),datasets:[
+   {label:'Selic',data:sel.map(x=>x.v),borderColor:css('--c2'),stepped:true,pointRadius:0,borderWidth:2},
+   {label:'Inflação 12m',data:sel.map(x=>ipM[x.d.slice(0,7)]??null),borderColor:css('--c3'),pointRadius:0,tension:.25,borderWidth:2}]},
+   options:base()});
+}
+function estados(){
+  mk('cPerCap',{type:'bar',data:{labels:ufs.map(u=>u.uf),datasets:[{data:ufs.map(u=>+u.pc.toFixed(1)),backgroundColor:css('--c1')}]},
+   options:base({indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{
+     title:c=>ufs[c[0].dataIndex].nome, label:c=>'R$ '+fmt(c.raw*1000,0)+' por habitante'}}},
+    scales:{x:{ticks:{color:css('--mut')},grid:{color:css('--grid')},title:{display:true,text:'R$ mil por habitante',color:css('--mut')}},
+            y:{ticks:{color:css('--mut'),autoSkip:false,font:{size:11}},grid:{display:false}}}})});
+}
+
+// ---- Filtro de período
+[[12,'12 meses'],[36,'3 anos'],[60,'5 anos'],[999,'Tudo']].forEach(([m,t])=>{
+  const b=document.createElement('button');b.textContent=t;if(m===meses)b.className='on';
+  b.onclick=()=>{meses=m;[...$('periodo').children].forEach(x=>x.className='');b.className='on';series();};
+  $('periodo').appendChild(b);
+});
+
+kpis();series();juros();estados();
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',()=>{series();juros();estados();});
+</script>
+</body>
+</html>
